@@ -51,8 +51,8 @@ function processData(csvData, modelName, divID) {
     const imageId = values[64];
     const labelId = values[65];
     const imageName = values[66]; // Nome del file dell'immagine
-    const imagePath = `oral1/${imageName}`; // Percorso dell'immagine relativa
-    featuresData.push({ features, imageId, labelId, imagePath });
+    //const imagePath = `oral1/${imageName}`; // Percorso dell'immagine relativa
+    featuresData.push({ features, imageId, labelId, imageName });
   }
   createPlot(featuresData, modelName, divID);
 }
@@ -93,11 +93,25 @@ function createPlot(featuresData, modelName, divID) {
     }
   };*/
 
+  // Trova i valori minimi e massimi delle componenti principali
+  const minX = Math.min(...firstComponent);
+  const maxX = Math.max(...firstComponent);
+  const minY = Math.min(...secondComponent);
+  const maxY = Math.max(...secondComponent);
+
+  // Calcola la variazione dei dati
+  const deltaX = maxX - minX;
+  const deltaY = maxY - minY;
+
+  // Imposta i range degli assi con un margine aggiuntivo per una migliore visualizzazione
+  const xAxisRange = [minX - 0.2 * deltaX, maxX + 0.2 * deltaX];
+  const yAxisRange = [minY - 0.1 * deltaY, maxY + 0.1 * deltaY];
+
   // Crea il layout per il grafico
   const layout = {
     title: modelName,
-    xaxis: { title: 'First Principal Component' },
-    yaxis: { title: 'Second Principal Component' },
+    xaxis: { title: 'First Principal Component', range: xAxisRange },
+    yaxis: { title: 'Second Principal Component', range: yAxisRange },
     annotations: [
       {
         x: 1,
@@ -154,30 +168,86 @@ function createPlot(featuresData, modelName, divID) {
   Plotly.newPlot(divID, [trace], layout, { displayModeBar: true }).then(gd => {
     gd.on('plotly_click', function(eventData) {
       const pointIndex = eventData.points[0].pointIndex;
-      const imagePath = featuresData[pointIndex].imagePath;
+      const fileName = featuresData[pointIndex].imageName; // Nome del file dell'immagine
+      const folderURL = 'https://unipiit-my.sharepoint.com/personal/s_landi19_studenti_unipi_it/_layouts/15/onedrive.aspx?id=%2Fpersonal%2Fs%5Flandi19%5Fstudenti%5Funipi%5Fit%2FDocuments%2Foral1%2F'; // URL della cartella contenente le immagini
+      const parentParam = '&parent=%2Fpersonal%2Fs_landi19_studenti_unipi_it%2FDocuments%2Foral1'; // Parametro parent
+      const imagePath = `${folderURL}${fileName}${parentParam}`;
       const imageId = featuresData[pointIndex].imageId;
       const xCoordinate = firstComponent[pointIndex].toFixed(6);
       const yCoordinate = secondComponent[pointIndex].toFixed(6);
       const imageContainer = document.getElementById(`${divID}_image`);
-      imageContainer.innerHTML = `(${xCoordinate},${yCoordinate}) ImageID:${imageId}<br><img src="${imagePath}" alt="Selected Image" style="max-width: 200px; max-height: 200px;">`;
+      
+      // Rimuovi l'immagine precedente se presente
+      imageContainer.innerHTML = '';
+
+      // Crea il link per visualizzare l'immagine
+      const linkElement = document.createElement('a');
+      linkElement.href = imagePath;
+      linkElement.target = '_blank';
+      linkElement.textContent = `Click here to view the image`;
+
+      // Aggiungi il link all'elemento imageContainer
+      imageContainer.appendChild(linkElement);
+
+      // Aggiungi la parte delle coordinate e dell'ID come testo normale
+      const textNode = document.createTextNode(` (${xCoordinate},${yCoordinate}) ImageID:${imageId}`);
+      imageContainer.appendChild(textNode);
     });
   });    
   
 }
 
 const local = false;
+
+function changeModel() {
+  var selectBox = document.getElementById("modelSelect");
+  var model = selectBox.options[selectBox.selectedIndex].value;
+  var csvURL = getCsvURL(model);
+  loadAndProcessCSVFile(csvURL, model, 'myDiv');
+  var imageContainer = document.getElementById("myDiv_image");
+  if (modelSelect.value !== "") {
+    imageContainer.style.display = "block";
+  } else {
+    imageContainer.style.display = "none";
+  }
+}
+
+function getCsvURL(model) {
+  if (local) {
+    return `http://localhost:8080/features/${getModelFileName(model)}.csv`;
+  } else {
+    return `features/${getModelFileName(model)}.csv`;
+  }
+}
+
+function getModelFileName(model) {
+  switch (model) {
+    case 'ConvNeXt Small':
+      return 'convnext_small_classifier';
+    case 'SqueezeNet 1_0':
+      return 'squeezenet1_0_classifier';
+    case 'ViT B_16':
+      return 'vit_b_16_heads';
+    case 'Swin S':
+      return 'swin_s_head';
+    default:
+      return '';
+  }
+}
+
+/*const local = true;
 let csvURL;
 if (local){
   // Carica e elabora i file CSV desiderati
   loadAndProcessCSVFile('http://localhost:8080/features/convnext_small_classifier.csv', 'ConvNeXt Small', 'myDiv1');
-  loadAndProcessCSVFile('http://localhost:8080/features/squeezenet1_0_classifier.csv', 'SqueezeNet 1_0', 'myDiv2');
-  loadAndProcessCSVFile('http://localhost:8080/features/vit_b_16_heads.csv', 'ViT B_16', 'myDiv3');
-  loadAndProcessCSVFile('http://localhost:8080/features/swin_s_head.csv', 'Swin S', 'myDiv4');
+  //loadAndProcessCSVFile('http://localhost:8080/features/squeezenet1_0_classifier.csv', 'SqueezeNet 1_0', 'myDiv2');
+  //loadAndProcessCSVFile('http://localhost:8080/features/vit_b_16_heads.csv', 'ViT B_16', 'myDiv3');
+  //loadAndProcessCSVFile('http://localhost:8080/features/swin_s_head.csv', 'Swin S', 'myDiv4');
 }
 else{
   // Carica e elabora i file CSV desiderati
   loadAndProcessCSVFile('features/convnext_small_classifier.csv', 'ConvNeXt Small', 'myDiv1');
-  loadAndProcessCSVFile('features/squeezenet1_0_classifier.csv', 'SqueezeNet 1_0', 'myDiv2');
-  loadAndProcessCSVFile('features/vit_b_16_heads.csv', 'ViT B_16', 'myDiv3');
-  loadAndProcessCSVFile('features/swin_s_head.csv', 'Swin S', 'myDiv4');
-}
+  //loadAndProcessCSVFile('features/squeezenet1_0_classifier.csv', 'SqueezeNet 1_0', 'myDiv2');
+  //loadAndProcessCSVFile('features/vit_b_16_heads.csv', 'ViT B_16', 'myDiv3');
+  //loadAndProcessCSVFile('features/swin_s_head.csv', 'Swin S', 'myDiv4');
+}*/
